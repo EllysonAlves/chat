@@ -14,9 +14,14 @@ const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 
 // Função utilitária para salvar mensagens
-export async function saveMessage(message: any) {
+
+export async function saveMessage(message: unknown) {
+  if (typeof message !== "object" || message === null) {
+    throw new Error("Mensagem inválida");
+  }
+
   await addDoc(collection(db, "messages"), {
-    ...message,
+    ...(message as Record<string, unknown>),
     createdAt: serverTimestamp(),
   });
 }
