@@ -1,6 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore, collection, addDoc, serverTimestamp } from "firebase/firestore";
 
+
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -15,13 +16,19 @@ export const db = getFirestore(app);
 
 // Função utilitária para salvar mensagens
 
-export async function saveMessage(message: unknown) {
-  if (typeof message !== "object" || message === null) {
-    throw new Error("Mensagem inválida");
-  }
+export async function saveMessage(body: any) {
+  try {
+    // Exemplo para WhatsApp Cloud API
+    const messagesArray = body.entry?.[0]?.changes?.[0]?.value?.messages || [];
 
-  await addDoc(collection(db, "messages"), {
-    ...(message as Record<string, unknown>),
-    createdAt: serverTimestamp(),
-  });
+    for (const msg of messagesArray) {
+      await addDoc(collection(db, "messages"), {
+        body: msg.text?.body || "",
+        from: msg.from || "WhatsApp",
+        createdAt: serverTimestamp(),
+      });
+    }
+  } catch (err) {
+    console.error("Erro ao salvar mensagem:", err);
+  }
 }

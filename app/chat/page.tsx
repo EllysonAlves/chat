@@ -1,23 +1,33 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
+import { useEffect, useState, useRef } from "react";
+import { collection, onSnapshot, query, orderBy, serverTimestamp, addDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import axios from "axios";
 
 type Message = {
     id: string;
-    body?: string;
-    from?: string;
+    body: string;
+    from: string;
     createdAt?: Date | string;
 };
-
 
 export default function ChatPage() {
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState("");
     const [toNumber, setToNumber] = useState("");
+    const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
+    // Scroll automático para a última mensagem
+    const scrollToBottom = () => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    };
+
+    useEffect(() => {
+        scrollToBottom();
+    }, [messages]);
+
+    // Carregar mensagens em tempo real
     useEffect(() => {
         const q = query(collection(db, "messages"), orderBy("createdAt", "asc"));
         const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -25,30 +35,46 @@ export default function ChatPage() {
                 const data = doc.data();
                 return {
                     id: doc.id,
-                    body: data.body,
-                    from: data.from,
-                    createdAt: data.createdAt?.toDate?.() || data.createdAt, // converte Firestore Timestamp
+                    body: data.body || "",
+                    from: data.from || "WhatsApp",
+                    createdAt: data.createdAt?.toDate?.() || data.createdAt,
                 };
             });
             setMessages(msgs);
         });
+
         return () => unsubscribe();
     }, []);
 
-
-    // Enviar mensagem via API
+    // Enviar mensagem via API e salvar localmente
     const sendMessage = async () => {
         if (!input || !toNumber) return;
+
+        const messageData = {
+            body: input,
+            from: "Você",
+            createdAt: new Date(),
+        };
+
         try {
+            // Salva no Firestore antes de enviar
+            await addDoc(collection(db, "messages"), {
+                ...messageData,
+                createdAt: serverTimestamp(),
+            });
+
+            // Envia para WhatsApp
             await axios.post("/api/sendMessage", {
                 to: toNumber,
                 message: input,
             });
+
             setInput("");
         } catch (err) {
             console.error("Erro ao enviar mensagem:", err);
         }
     };
+
 
     return (
         <div className="p-4 max-w-2xl mx-auto">
@@ -57,9 +83,10 @@ export default function ChatPage() {
             <div className="border p-4 h-96 overflow-y-auto mb-4 bg-gray-50">
                 {messages.map((msg) => (
                     <div key={msg.id} className="mb-2">
-                        <strong>{msg.from || "WhatsApp"}:</strong> {msg.body}
+                        <strong>{msg.from}:</strong> {msg.body}
                     </div>
                 ))}
+                <div ref={messagesEndRef} />
             </div>
 
             <div className="flex gap-2">
