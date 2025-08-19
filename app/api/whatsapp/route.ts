@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { saveMessage } from "@/lib/firebase";
+
+const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN;
 
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
@@ -6,17 +9,26 @@ export async function GET(req: NextRequest) {
   const token = url.searchParams.get("hub.verify_token");
   const challenge = url.searchParams.get("hub.challenge");
 
-  if (mode === "subscribe" && token === process.env.WHATSAPP_VERIFY_TOKEN) {
+  if (mode === "subscribe" && token === VERIFY_TOKEN) {
+    console.log("Webhook verificado com sucesso!");
     return new NextResponse(challenge, { status: 200 });
   }
+
   return new NextResponse("Erro de verificação", { status: 403 });
 }
 
 export async function POST(req: NextRequest) {
-  const body = await req.json();
-  console.log("Mensagem recebida do WhatsApp:", body);
+  try {
+    const body = await req.json();
+    console.log("Mensagem recebida do WhatsApp:", JSON.stringify(body, null, 2));
 
-  // TODO: salvar no Firestore
+    // Salva no Firebase
+    await saveMessage(body);
 
-  return NextResponse.json({ status: "ok" });
+    return NextResponse.json({ status: "ok" });
+  } catch (err: unknown) {
+    let message = "Erro desconhecido";
+    if (err instanceof Error) message = err.message;
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }
