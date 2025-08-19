@@ -3,6 +3,20 @@ import { saveMessage } from "@/lib/firebase";
 
 const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN;
 
+// Define o formato esperado do webhook do WhatsApp
+export interface WhatsAppWebhookPayload {
+  entry?: {
+    changes?: {
+      value?: {
+        messages?: {
+          from?: string;
+          text?: { body?: string };
+        }[];
+      };
+    }[];
+  }[];
+}
+
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const mode = url.searchParams.get("hub.mode");
@@ -19,7 +33,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    const body: WhatsAppWebhookPayload = await req.json();
     console.log("Mensagem recebida do WhatsApp:", JSON.stringify(body, null, 2));
 
     // Salva no Firebase
