@@ -29,7 +29,7 @@ export default function ChatPage() {
 
     // Carregar mensagens em tempo real
     useEffect(() => {
-        const q = query(collection(db, "messages"), orderBy("createdAt", "asc"));
+        const q = query(collection(db, "messages"), orderBy("createdAt", "desc")); // Mude para 'desc'
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const msgs = snapshot.docs.map((doc) => {
                 const data = doc.data();
@@ -40,7 +40,7 @@ export default function ChatPage() {
                     createdAt: data.createdAt?.toDate?.() || data.createdAt,
                 };
             });
-            setMessages(msgs);
+            setMessages(msgs.reverse()); // Inverte a ordem para mostrar as mais recentes no final
         });
 
         return () => unsubscribe();

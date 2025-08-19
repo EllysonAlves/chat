@@ -9,6 +9,7 @@ const firebaseConfig = {
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  measurementId: "G-35VZPC5YKT",
 };
 
 const app = initializeApp(firebaseConfig);
@@ -16,19 +17,20 @@ export const db = getFirestore(app);
 
 // Função utilitária para salvar mensagens
 
-export async function saveMessage(body: any) {
+export async function saveMessage(whatsappPayload: any) {
   try {
-    // Exemplo para WhatsApp Cloud API
-    const messagesArray = body.entry?.[0]?.changes?.[0]?.value?.messages || [];
+    // Extrai o texto da mensagem do payload do WhatsApp
+    const message = whatsappPayload.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
+    if (!message) return;
 
-    for (const msg of messagesArray) {
-      await addDoc(collection(db, "messages"), {
-        body: msg.text?.body || "",
-        from: msg.from || "WhatsApp",
-        createdAt: serverTimestamp(),
-      });
-    }
-  } catch (err) {
-    console.error("Erro ao salvar mensagem:", err);
+    const messageData = {
+      body: message.text?.body || "",
+      from: message.from || "WhatsApp",
+      createdAt: serverTimestamp(),
+    };
+
+    await addDoc(collection(db, "messages"), messageData);
+  } catch (error) {
+    console.error("Error saving message:", error);
   }
 }
